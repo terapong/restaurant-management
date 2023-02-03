@@ -17,7 +17,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type InvoiceViewFormat Struct {
+type InvoiceViewFormat struct {
 	Invoice_id			string
 	Payment_method		string
 	Order_id			string
