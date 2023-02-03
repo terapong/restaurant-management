@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"time"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -17,7 +18,7 @@ func DBinstance() *mongo.Client {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ctx, concel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
 	defer cancel()
 
@@ -28,12 +29,12 @@ func DBinstance() *mongo.Client {
 	}
 	fmt.Println("connected to mongodb")
 	return client
-
 }
 
 var Client *mongo.Client = DBinstance()
 
-func OpenCollection(client *mongo.Client, collectionName string) *mingo.Collection {
-	var collection *mingo.Collection = client.Database("restaurant").Collection(collectionName)
+func OpenCollection(client *mongo.Client, collectionName string) *mongo.Collection {
+	var collection *mongo.Collection = client.Database("restaurant").Collection(collectionName)
+
 	return collection
 }

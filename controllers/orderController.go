@@ -5,22 +5,26 @@ import (
 	"fmt"
 	"golang-restaurant-management/database"
 	"golang-restaurant-management/models"
+	"log"
 	"net/http"
 	"time"
 
-	"gitnub.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
+
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/bluesuncorp/validator.v5"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
 var orderCollection *mongo.Collection = database.OpenCollection(database.Client, "order")
 
 func GetOrders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-		
+
 		result, err := orderCollection.Find(context.TODO(), bson.M{})
 		defer cancel()
 		if err != nil {
@@ -59,39 +63,39 @@ func CreateOrder() gin.HandlerFunc {
 			return
 		}
 
-		validationErr != validate.Struct(order)
+		validationErr := validate.Struct(order)
+
 		if validationErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": validationErr.Error()})
 			return
 		}
 
 		if order.Table_id != nil {
-			err := tableColletion.FindOne(ctx, bson.M{"table_id" : order.Table_id}).Decode(&table)
+			err := tableCollection.FindOne(ctx, bson.M{"table_id": order.Table_id}).Decode(&table)
 			defer cancel()
 			if err != nil {
-				msg := fht.Sprintf("message: Table was found")
+				msg := fmt.Sprintf("message:Table was not found")
 				c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
 				return
 			}
 		}
 
-		order.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC339))
-		order.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC339))
+		order.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+		order.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 
 		order.ID = primitive.NewObjectID()
-		order.order_id = order.ID.Hex()
+		order.Order_id = order.ID.Hex()
 
 		result, insertErr := orderCollection.InsertOne(ctx, order)
 
 		if insertErr != nil {
-			msg := fht.Sprintf("order item was created")
-				c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
-				return
+			msg := fmt.Sprintf("order item was not created")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
+			return
 		}
 
 		defer cancel()
 		c.JSON(http.StatusOK, result)
-
 	}
 }
 
@@ -109,37 +113,37 @@ func UpdateOrder() gin.HandlerFunc {
 		}
 
 		if order.Table_id != nil {
-			err := menuCollection.FindOne(ctx, bson.M{"tabled_id": food.Table_id}).Decode(&table)
+			err := menuCollection.FindOne(ctx, bson.M{"tabled_id": order.Table_id}).Decode(&table)
 			defer cancel()
 			if err != nil {
-				msg := fmt.Sprintf("message: Menu was not found")
+				msg := fmt.Sprintf("message:Menu was not found")
 				c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
 				return
 			}
 			updateObj = append(updateObj, bson.E{"menu", order.Table_id})
 		}
 
-		order.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC339))
-		updateObj = append(updateObj, bson.E{"updated_at", food.Updated_at})
+		order.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+		updateObj = append(updateObj, bson.E{"updated_at", order.Updated_at})
 
-		update := true
+		upsert := true
 
 		filter := bson.M{"order_id": orderId}
-		opt := options.UpdateOptions {
-			Upsert:&upsert,
+		opt := options.UpdateOptions{
+			Upsert: &upsert,
 		}
 
-		result, err := orderCollection.UpdateOne (
+		result, err := orderCollection.UpdateOne(
 			ctx,
 			filter,
 			bson.D{
-				{"$set", updateObj},
+				{"$st", updateObj},
 			},
 			&opt,
 		)
 
 		if err != nil {
-			msg := fmt.Sprintf("order item update failed ")
+			msg := fmt.Sprintf("order item update failed")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
 			return
 		}
@@ -150,11 +154,14 @@ func UpdateOrder() gin.HandlerFunc {
 }
 
 func OrderItemOrderCreator(order models.Order) string {
-	order.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC339))
-	order.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC339))
+
+	order.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+	order.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 	order.ID = primitive.NewObjectID()
-	order.order_id = order.ID.Hex()
+	order.Order_id = order.ID.Hex()
+
 	orderCollection.InsertOne(ctx, order)
 	defer cancel()
-	return order.order_id
+
+	return order.Order_id
 }

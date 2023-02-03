@@ -1,19 +1,22 @@
 package main
 
 import (
-	"golang-restaurant-management/database"
-	"golang-restaurant-management/routes"
-	"golang-restaurant-management/middleware"
-	
 	"os"
+
+	"golang-restaurant-management/database"
+
+	middleware "golang-restaurant-management/middleware"
+	routes "golang-restaurant-management/routes"
+
 	"github.com/gin-gonic/gin"
+
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
 var foodCollection *mongo.Collection = database.OpenCollection(database.Client, "food")
 
-
-
-func main() { 
+func main() {
+	port := os.Getenv("PORT")
 
 	if port == "" {
 		port = "8000"
